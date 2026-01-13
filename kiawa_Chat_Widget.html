@@ -232,6 +232,7 @@
           else {
             message=message.replaceAll("<", "&lt;").replaceAll(">", "&gt;");
           }
+                    message = message.replace(/\bSoStylish\b/g, "<img class='emote' src= 'https://cdn.betterttv.net/frankerfacez_emote/81792/4'>");
           //make color html for username
           username=`<span style="color:${userColor}">${username}</span>`
           //push the chat message to the webpage

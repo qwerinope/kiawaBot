@@ -24,6 +24,10 @@ const t1Value = 3.60;
 const t2Value = 6.00;
 const t3Value = 17.50;
 const primeValue = 2.50;
+//const t1Value = 1;
+//const t2Value = 2;
+//const t3Value = 6;
+//const primeValue = 1;
 const broadcasterID=37055465;
 const channelName='#kiara_tv';
 //details for Twitch OAuth
@@ -408,8 +412,8 @@ incentiveData.statusCallback = handleIncentiveFileStatusChange;
 incentiveData.loadData();
 if (!fs.existsSync('./data/incentives.txt')) {
     const content = incentiveData.read('incentive.command') + ' $' + Number(incentiveData.read('incentive.amount')).toFixed(2) + ' / $' + incentiveData.read('incentive.goal');
-
-    fs.writeFile('./data/incentive.txt', content, err => {
+    //const content = Number(incentiveData.read('incentive.amount')).toFixed(0) + '/' + incentiveData.read('incentive.goal');
+    fs.writeFile('//KIARASTREAM/d/incentive.txt', content, err => {
         if (err) {
             console.error(err);
         } else {
@@ -774,13 +778,11 @@ function sendToAllChatWidgets(data) {
  ***************************************/
 tesManager.queueSubscription("channel.cheer", subCondition, event => {
     //Handle received Cheer events
-    console.log(event);
     incentiveAmount = incentiveData.read('incentive.amount');
     incentiveAmount = incentiveAmount + event.bits / 100
     if (event.bits === 999) {
         setTimeout(() => { serverBoop(`22587336`, 1800, 'TNT') }, 5000);
     }
-    console.log(incentiveAmount);
     incentiveData.update('incentive.amount', incentiveAmount);
     updateIncentiveFile();
     if (!event?.is_anonymous) { // anonymous cheers, well, don't come with user info
@@ -792,7 +794,6 @@ tesManager.queueSubscription("channel.cheer", subCondition, event => {
  *          Channel Points             *
  ***************************************/
 tesManager.queueSubscription('channel.channel_points_custom_reward_redemption.add', subCondition, event => {
-    console.log(event)
     //Check for which redemption it was and do things based off of the redemption
 
 
@@ -996,6 +997,9 @@ tesManager.queueSubscription('stream.online', subCondition, event =>{
                 jsonfile.writeFileSync(streak_Path, streak_List, { spaces: 2, EOL: "\n" })
             }
             //all is good, do standard procedure
+            else if((currentStart-lastEnd)<7200){
+                console.log('Stream Started shortly after last stream, do not update times')
+            }
             else{
                 console.log('all is good on stream online check')
                 streak_List.Last_Stream.Start=streak_List.Current_Stream.Start;
@@ -1189,8 +1193,8 @@ const client = new tmi.Client({
 function updateIncentiveFile() {
 
     const content = incentiveData.read('incentive.command') + ' $' + Number(incentiveData.read('incentive.amount')).toFixed(2) + ' / $' + incentiveData.read('incentive.goal');
-
-    fs.writeFile('./data/incentive.txt', content, err => {
+    //const content = Number(incentiveData.read('incentive.amount')).toFixed(0) + '/' + incentiveData.read('incentive.goal');
+    fs.writeFile('//KIARASTREAM/d/incentive.txt', content, err => {
         if (err) {
             console.error(err);
         } else {
@@ -1332,7 +1336,7 @@ client.on('message', async (channel, tags, message, self) => {
     }
     //split the message to pull out the command from the first word
     //creates an array of space delimited entries
-    const args = message.split(' ');
+    const args =  message.split(/\s+/);
 
     //take the first entry and convert to lowercase, this is to check for addquote or quote command
     var command = args[0].toLowerCase();
@@ -1559,10 +1563,13 @@ client.on('message', async (channel, tags, message, self) => {
             //check and see if a specific number was requested
             try {
                 var quote_ID = args.slice(1).join(' ');
+                //console.log(args)
+               // var  quote_ID= args[1]
             }
 
             //I don't know how errors work so this just stops it from clogging the window
             catch (err) {
+                console.log(err)
             }
 
             //generate a random quote if no number specified
@@ -1587,7 +1594,6 @@ client.on('message', async (channel, tags, message, self) => {
                 //format all the bullshit and spit it out in the chat
                 var quote_Output = "Quote #" + quote_ID + ": " + quote_Info.Quote_Text + " [" + quote_Info.Category + "] " + "[" + quote_Info.Date + "]"
                 client.say(channel, quote_Output);
-                console.log(channel);
             }
             else {
                 client.say(channel, `Number Provided out of range! The highest number is ${quote_Count}`);
