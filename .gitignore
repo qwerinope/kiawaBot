@@ -145,3 +145,6 @@ dist
 
 # Data directory - runtime data, not committed
 data/
+
+# Auth data
+auth-data.json

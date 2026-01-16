@@ -26,6 +26,7 @@
     "compose:logs": "docker-compose logs -f",
     "compose:restart": "docker-compose restart"
   },
+  "type": "module",
   "name": "kiara_bot",
   "version": "1.0.0",
   "main": "start.js",

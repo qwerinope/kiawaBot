@@ -1,5 +1,5 @@
 // Startup script that runs both the bot and web server
-const { spawn } = require('child_process');
+import { spawn } from "child_process"
 
 console.log('Starting Kiara Bot services...');
 
@@ -23,7 +23,7 @@ webServer.on('close', (code) => {
 // Give web server a moment to start, then start the bot
 setTimeout(() => {
     console.log('Starting Kiara Bot...');
-    
+
     const bot = spawn('node', ['Kiara_bot.js'], {
         stdio: ['pipe', 'pipe', 'pipe']
     });
