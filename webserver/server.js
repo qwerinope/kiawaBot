@@ -1,19 +1,18 @@
-const express = require('express');
-const jsonfile = require('jsonfile');
-const path = require('path');
-const fs = require('fs');
+import express from "express"
+import jsonfile from "jsonfile"
+import path from "path"
+import fs from "fs"
 
 const app = express();
 const port = process.env.WEB_PORT || 8081;
 
 // Data file paths - look in parent directory's data folder
-const quote_Path = path.join(__dirname, '..', 'data', 'quotes.json');
-const streak_Path = path.join(__dirname, '..', 'data', 'streaks.json');
-const command_Path = path.join(__dirname, '..', 'data', 'command_List.json');
-const incentive_Path = path.join(__dirname, '..', 'data', 'incentives.json');
+const quote_Path = path.join(import.meta.dirname, '..', 'data', 'quotes.json');
+const streak_Path = path.join(import.meta.dirname, '..', 'data', 'streaks.json');
+const command_Path = path.join(import.meta.dirname, '..', 'data', 'command_List.json');
 
 // Ensure data directory exists
-const dataDir = path.join(__dirname, '..', 'data');
+const dataDir = path.join('..', 'data');
 if (!fs.existsSync(dataDir)) {
     console.log('Web Server: Creating data directory...');
     fs.mkdirSync(dataDir, { recursive: true });
@@ -77,18 +76,6 @@ app.get("/api/commands", (req, res) => {
     }
 });
 
-// Web endpoint to serve incentive data
-app.get("/api/commands", (req, res) => {
-    try {
-        const incentiveData = safeReadJSON(incentive_Path, []);
-        res.setHeader('Content-Type', 'application/json');
-        res.json(commandsData);
-    } catch (error) {
-        console.error('Error reading incentive file:', error);
-        res.status(500).json({ error: 'Failed to read incentive data' });
-    }
-});
-
 // Simple HTML page to display the data
 app.get("/streaks", (req, res) => {
     try {
@@ -113,11 +100,9 @@ app.get("/streaks", (req, res) => {
                 <a href="/streaks">Streaks</a>
                 <a href="/quotes">Quotes</a>
                 <a href="/commands">Commands</a>
-                <a href="/incentives">Incentives</a>
                 <a href="/api/streaks">Streaks API</a>
                 <a href="/api/quotes">Quotes API</a>
                 <a href="/api/commands">Commands API</a>
-                <a href="/api/incentives">Incentives API</a>
             </div>
             <h2>Streaks Data</h2>
             <pre>${JSON.stringify(streaksData, null, 2)}</pre>
@@ -154,11 +139,9 @@ app.get("/quotes", (req, res) => {
                 <a href="/streaks">Streaks</a>
                 <a href="/quotes">Quotes</a>
                 <a href="/commands">Commands</a>
-                <a href="/incentives">Incentives</a>
                 <a href="/api/streaks">Streaks API</a>
                 <a href="/api/quotes">Quotes API</a>
                 <a href="/api/commands">Commands API</a>
-                <a href="/api/incentives">Incentives API</a>
             </div>
             <h2>Quotes Data</h2>
             <pre>${JSON.stringify(quotesData, null, 2)}</pre>
@@ -195,11 +178,9 @@ app.get("/commands", (req, res) => {
                 <a href="/streaks">Streaks</a>
                 <a href="/quotes">Quotes</a>
                 <a href="/commands">Commands</a>
-                <a href="/incentives">Incentives</a>
                 <a href="/api/streaks">Streaks API</a>
                 <a href="/api/quotes">Quotes API</a>
                 <a href="/api/commands">Commands API</a>
-                <a href="/api/incentives">Incentives API</a>
             </div>
             <h2>Commands Data</h2>
             <pre>${JSON.stringify(commandsData, null, 2)}</pre>
@@ -212,48 +193,6 @@ app.get("/commands", (req, res) => {
     }
 });
 
-// Simple HTML page to display incentive
-app.get("/incentives", (req, res) => {
-    try {
-        const incentiveData = safeReadJSON(incentive_Path, []);
-        const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta http-equiv="refresh" content="10">
-            <title>Kiara Bot - Incentive Data</title>
-            <style>
-                body { font-family: Arial, sans-serif; margin: 20px; }
-                pre { background: #ffffff00; padding: 15px; border-radius: 5px; overflow: auto; color: #FFFFFF;
-                font-family: sans-serif; font-weight: 600; font-size: 10rem;}
-                h1 { color: #000000; }
-                .nav { margin: 20px 0; }
-                .nav a { margin-right: 15px; color: #0066cc; text-decoration: none; }
-                .nav a:hover { text-decoration: underline; }
-            </style>
-        </head>
-        <body>
-            <h1>Kiara Bot - Data Dashboard</h1>
-            <div class="nav">
-                <a href="/streaks">Streaks</a>
-                <a href="/quotes">Quotes</a>
-                <a href="/commands">Commands</a>
-                <a href="/incentives">Incentives</a>
-                <a href="/api/streaks">Streaks API</a>
-                <a href="/api/quotes">Quotes API</a>
-                <a href="/api/commands">Commands API</a>
-                <a href="/api/incentives">Incentives API</a>
-            </div>
-            <h2>Incentive Data</h2>
-            <pre>${incentiveData.incentive.command} $${incentiveData.incentive.amount.toFixed(2)} / $${incentiveData.incentive.goal.toFixed(0)}</pre>
-        </body>
-        </html>`;
-        res.send(html);
-    } catch (error) {
-        console.error('Error reading incentive file:', error);
-        res.status(500).send('<h1>Error</h1><p>Failed to read incentive data</p>');
-    }
-});
 // Root endpoint with navigation
 app.get("/", (req, res) => {
     const html = `
@@ -288,12 +227,10 @@ app.get("/", (req, res) => {
             <a href="/streaks">View Streaks Data</a>
             <a href="/quotes">View Quotes Data</a>
             <a href="/commands">View Commands Data</a>
-            <a href="/incentives">Incentives</a>
             <hr style="margin: 20px 0;">
             <a href="/api/streaks">Streaks JSON API</a>
             <a href="/api/quotes">Quotes JSON API</a>
             <a href="/api/commands">Commands JSON API</a>
-            <a href="/api/incentives">Incentives JSON API</a>
         </div>
     </body>
     </html>`;
@@ -301,9 +238,13 @@ app.get("/", (req, res) => {
 });
 
 // Health check endpoint
-app.get("/health", (req, res) => {
+app.get("/health", (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
+
+app.get("/chatwidget", (_req, res) => {
+    res.sendFile(path.join(import.meta.dirname, "www/chatwidget.html"))
+})
 
 app.listen(port, '0.0.0.0', () => {
     console.log(`Kiara Bot Web Server running on port ${port}`);
@@ -311,4 +252,4 @@ app.listen(port, '0.0.0.0', () => {
     console.log(`Server listening on 0.0.0.0:${port} (accessible from outside container)`);
 });
 
-module.exports = app;
+export { app }

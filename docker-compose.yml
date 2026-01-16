@@ -1,12 +1,9 @@
-version: '3.8'
-
 services:
   kiara-bot:
     build: .
     container_name: kiara-bot
     restart: unless-stopped
     ports:
-      - "3000:3000"  # OAuth redirect port
       - "8081:8081"  # Web server port
       - "8080:8080"  # Web socket port
     environment:
@@ -25,6 +22,14 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+    develop:
+      watch:
+        - path: ./webserver/www
+          action: rebuild
+        - path: ./
+          action: rebuild
+
 
 volumes:
   bot_logs:

@@ -1,5 +1,5 @@
-import { default as fs } from "fs";
-import { default as path } from "path";
+import fs from "fs";
+import path from "path";
 
 const caches = new Map();
 
@@ -15,7 +15,7 @@ function readFileJson(absolutePath) {
 			console.log(`File ${absolutePath} exists but could not be read.`, e);
 			throw e;
 		}
-		
+
 		let data;
 		try {
 			data = JSON.parse(content);
@@ -65,15 +65,15 @@ function buildFileProxy(absolutePath) {
 		// when deleting a property directly from the Proxy, write it to disk
 		deleteProperty: buildFileCachingHook("deleteProperty"),
 	});
-	
+
 	return cache;
 }
 
 export function getFileCache(filePath) {
 	// turn any relative path like "something.json" into "C:\Users\anyia\path\to\kiawaBot\something.json"
 	const absolutePath = path.resolve(path.dirname("."), filePath);
-	
-	
+
+
 	if (!caches.has(absolutePath)) {
 		// if we don't already have a file cache created for this path, make one
 		const cache = buildFileProxy(absolutePath);

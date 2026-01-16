@@ -1,24 +1,20 @@
 //load all the required crap
-const tmi = require('tmi.js');
-const TES = require("tesjs");
-require('dotenv').config();
-const axios = require('axios');
-const jsonfile = require('jsonfile');
+import tmi from "tmi.js"
+import TES from "tesjs";
+import axios from "axios";
+import jsonfile from "jsonfile";
 const quote_Path = './data/quotes.json';
-const streak_Path='./data/streaks.json';
+const streak_Path = './data/streaks.json';
 const command_Path = './data/command_List.json';
-//This is the included AuthDataHelper.js file
-const AuthDataHelper = require('./AuthDataHelper');
-const IncentiveHelper = require('./IncentiveHelper');
-const WebSocket = require('ws');
-//make sure you've installed axios and express into your project
-const express = require("express");
+import AuthDataHelper from "./AuthDataHelper.js";
+import IncentiveHelper from "./IncentiveHelper.js";
+import { WebSocketServer } from "ws";
+import express from "express"
 
-//These come from things built into node.js
-const querystring = require('qs');
-const spawn = require('child_process').spawn;
+import querystring from "qs"
+import { spawn } from "child_process"
 //Include line reading module
-const fs = require('fs');
+import fs from "fs"
 //const { getFileCache } = require("./FileCacheService");
 
 // Ensure data directory exists
@@ -54,15 +50,17 @@ const primeValue = 2.50;
 //const t2Value = 2;
 //const t3Value = 6;
 //const primeValue = 1;
-const broadcasterID=37055465;
-const channelName='#kiara_tv';
+const broadcasterID = process.env.BROADCASTER_ID;
+const channelName = process.env.BROADCASTER_NAME;
 //details for Twitch OAuth
 const clientId = process.env.CLIENT_ID;
 const clientSecret = process.env.CLIENT_SECRET;
 const botID = process.env.BOT_ID;
+const botName = process.env.BOT_NAME;
+const INCENTIVEPATH = process.env.INCENTIVE_PATH;
 var incentiveAmount;
 var incentiveGoal;
-const timedCommands=['discord', 'kofi','socials2', 'socials1', 'links','patreon','youtube','archives'];
+const timedCommands = ['discord', 'kofi', 'socials2', 'socials1', 'links', 'patreon', 'youtube', 'archives'];
 const scopes = [
     'bits:read',
     'channel:read:subscriptions',
@@ -141,8 +139,18 @@ async function startAuth() {
         redirect_uri: redirectUri,
         scope: scopes.join(' ')
     });
-    const authUrl = "https://id.twitch.tv/oauth2/authorize?" + authQueryString.replace(/&/g, "^&");
-    await spawn('cmd', ["/c", "start", authUrl]);
+    const authUrl = new URL("https://id.twitch.tv/oauth2/authorize?" + authQueryString)
+    switch (process.platform) {
+        case 'windows':
+            await spawn('cmd', ["/c", "start", authUrl]);
+            break;
+        case 'linux':
+            await spawn('xdg-open', [authUrl])
+            break;
+        case _:
+            console.error(`${process.platform} isn't supported for authentication`)
+            process.exit(1);
+    }
     console.log('made it to end of startauth')
 }
 
@@ -187,7 +195,7 @@ function refreshAccessToken() {
                 authData.update('twitch.refresh_token', '');
                 twitchAuthReady = false;
                 clearInterval(validationTicker)
-               // clearInterval(accessRefresh)
+                // clearInterval(accessRefresh)
                 startAuth();
             } else {
                 console.log(error);
@@ -373,18 +381,18 @@ async function getBadgeVersion(set_id, version_id) {
 
 function serverBoop(user_id, duration, reason) {
     return new Promise((resolve, reject) => {
-        apiPostRequest('moderation/bans', { broadcaster_id: 37055465, moderator_id: 37055465 }, { "data": { "user_id": user_id, "duration": duration, "reason": reason } })
+        apiPostRequest('moderation/bans', { broadcaster_id: broadcasterID, moderator_id: broadcasterID }, { "data": { "user_id": user_id, "duration": duration, "reason": reason } })
             .then(data => resolve(data.data))
             .catch(error => {
                 console.log("Error when doin' a boop");
-                setTimeout(() => { client.say('#kiara_tv', 'kiawaBONK kiawaBONK') }, 3000);
-                setTimeout(() => { client.say('#kiara_tv', 'kiawaWat') }, 6000);
-                setTimeout(() => { client.say('#kiara_tv', 'kiawaPuff') }, 8000);
-                setTimeout(() => { client.say('#kiara_tv', 'kiawaBONK kiawaBONK kiawaBONK') }, 11000);
-                setTimeout(() => { client.say('#kiara_tv', 'kiawaDed') }, 13000);
+                setTimeout(() => { client.say('#' + channelName, 'kiawaBONK kiawaBONK') }, 3000);
+                setTimeout(() => { client.say('#' + channelName, 'kiawaWat') }, 6000);
+                setTimeout(() => { client.say('#' + channelName, 'kiawaPuff') }, 8000);
+                setTimeout(() => { client.say('#' + channelName, 'kiawaBONK kiawaBONK kiawaBONK') }, 11000);
+                setTimeout(() => { client.say('#' + channelName, 'kiawaDed') }, 13000);
 
             });
-        client.say('#kiara_tv', 'kiawaBONK');
+        client.say('#' + channelName, 'kiawaBONK');
     });
 }
 
@@ -416,7 +424,7 @@ function handleIncentiveFileStatusChange(status) {
 //Things to do when the Twitch auth is initially validated
 function handleInitialAuthValidation() {
     //as an example, we'll fetch the channel info once we know the token's good to show the API is working
-    getChannelInfo(37055465)
+    getChannelInfo(broadcasterID)
         .then(channel_data => {
             console.log('Got channel data!', channel_data);
         })
@@ -436,10 +444,10 @@ validateAccessToken();
 validationTicker = setInterval(() => { validateAccessToken(); }, 1000 * 600);
 incentiveData.statusCallback = handleIncentiveFileStatusChange;
 incentiveData.loadData();
-if (!fs.existsSync('./data/incentives.txt')) {
+if (!fs.existsSync(INCENTIVEPATH)) {
     const content = incentiveData.read('incentive.command') + ' $' + Number(incentiveData.read('incentive.amount')).toFixed(2) + ' / $' + incentiveData.read('incentive.goal');
     //const content = Number(incentiveData.read('incentive.amount')).toFixed(0) + '/' + incentiveData.read('incentive.goal');
-    fs.writeFile('//KIARASTREAM/d/incentive.txt', content, err => {
+    fs.writeFile(INCENTIVEPATH, content, err => {
         if (err) {
             console.error(err);
         } else {
@@ -447,7 +455,6 @@ if (!fs.existsSync('./data/incentives.txt')) {
         }
     });
 }
-if (this.statusCallback) this.statusCallback("loaded");
 
 //LISTENING SECTION
 
@@ -456,7 +463,7 @@ class TesManager {
     /** @typedef {(event: Event) => any} TesEventHandler */
     /** @typedef {{type: string, condition: object, callback?: TesEventHandler}} TesSubscriptionParams */
     /** @typedef {{type: string, id: string, condition: object, created_at: string}} Subscription */
-    
+
     /** @type {TES} */
     #tes;
 
@@ -465,7 +472,7 @@ class TesManager {
 
     /** @type {{[messageId: string]: NodeJS.Timeout}} */
     #recentlySeenEventIdentifiers = {};
-    
+
     /** @type {{[subscriptionType: string]: Subscription}} */
     #subscriptionByType = {};
 
@@ -491,7 +498,7 @@ class TesManager {
                 },
                 listener: { type: "websocket", port: 8082 },
             });
-            
+
             /**
              * Twitch revoked an EventSub subscription.  Maybe something related to the user revoking auth for the bot in general?
              * Nothing to be done here - resubscribing won't work on the fly, and your access token may even be entirely revoked.
@@ -509,7 +516,7 @@ class TesManager {
              * @param {{[subscriptionId: string]: {type: string, condition: object}}} subscriptionTypeAndConditionById
              */
             const onConnectionLost = subscriptionTypeAndConditionById => {
-                const types = Object.values(subscriptionTypeAndConditionById).map(({type}) => type).sort().join(", ");
+                const types = Object.values(subscriptionTypeAndConditionById).map(({ type }) => type).sort().join(", ");
                 console.log(`Connection lost for subscription types ${types}; let's repair them.`)
                 this.#repairSubscriptions();
             };
@@ -521,28 +528,28 @@ class TesManager {
             const warning = () => console.log("TES failed to initialize.  Could just be an authentication error - try restarting the bot after you reauth.", error);
             warning();
             startAuth();
-            return {queueSubscription: warning}; // calls to queueSubscription won't crash the bot entirely
+            return { queueSubscription: warning }; // calls to queueSubscription won't crash the bot entirely
         }
     }
 
     #initializeSubscriptionQueue() {
         let queueHeat = 0;
-        
+
         // Handle queued subscription requests one-by-one to respect Twitch rate limiting
         const handleQueue = (async () => {
             const input = this.#pendingSubscriptions.shift();
             if (input) {
                 queueHeat = queueHeat + 1;
-                
+
                 const { type, condition, callback } = input;
-                
+
                 // If there was a connection_lost event, TesManager doesn't retain the callback from that subscription.  callback will be undefined.
                 // But the event listener (from TES#on) hasn't been unregistered, so we don't need to add a second listener.
                 if (typeof callback === "function") {
                     const wrappedCallback = this.#preventDuplicateEvents(callback);
                     this.#tes.on(type, wrappedCallback);
                 }
-                
+
                 try {
                     const existingSubscription = this.#subscriptionByType[type];
                     if (existingSubscription) {
@@ -570,10 +577,10 @@ class TesManager {
             // The math is arbitrary, but generally queueHeat should provide some sort of exponential backoff
             setTimeout(handleQueue, 100 * Math.pow(1 + (queueHeat / 2), 2))
         });
-        
+
         handleQueue();
     }
-    
+
     /**
      * @see https://dev.twitch.tv/docs/eventsub/#handling-duplicate-events
      * 
@@ -588,11 +595,11 @@ class TesManager {
                 if (!timeout) {
                     // The timeout does not exist.  This is the first time we've seen this event recently.
                     // Create a timeout for a few seconds to check for future duplicates, and then handle the event itself.
-            
+
                     // We don't want to save every UEID we see for the entire lifetime of the bot (or beyond).  That's just leaking memory needlessly.
                     // This message receipt will self destruct in 5 seconds.
                     this.#recentlySeenEventIdentifiers[uniqueEventIdentifier] = setTimeout(() => delete this.#recentlySeenEventIdentifiers[uniqueEventIdentifier], 5000);
-            
+
                     callback(event, subscription);
                 }
                 else {
@@ -600,7 +607,7 @@ class TesManager {
                     // Don't handle this message, but restart the timeout.
                     console.log(`Deduping event ${subscription.type}`, uniqueEventIdentifier);
                     timeout.refresh();
-                    
+
                     // While we're at it, let's repair the subscriptions in case this is evidence of a duplicate subscription and not just a resent message
                     console.log(`Duplicate message detected; let's repair the subscriptions.`)
                     this.#repairSubscriptions();
@@ -620,7 +627,7 @@ class TesManager {
      */
     #getUniqueEventIdentifier(event, subscription) {
         const type = subscription.type;
-        
+
         // If we need to NOT deduplicate an event for some reason, we can return early here.  Maybe based on subscription type?
         const typesThatShouldNotBeDeduped = [
             // "channel.chat.message_from_jonid"
@@ -628,12 +635,12 @@ class TesManager {
         if (typesThatShouldNotBeDeduped.includes(type)) {
             return null;
         }
-        
+
         // Chat message events typically have a message_id field.  If it exists, we should probably use it.
         if (event.message_id) {
             return event.message_id;
         }
-        
+
         // similar to message_id, many event types do have a single field we can use to deduplicate the occurrence.  See if that's a known case.
         const simpleFieldLookupsByType = {
             "channel.channel_points_custom_reward_redemption.add": "id",
@@ -642,11 +649,11 @@ class TesManager {
         if (possiblyUniqueFieldName) {
             return event[possiblyUniqueFieldName];
         }
-        
+
         // No idea how this event can be deduplicated.  Let's serialize the whole thing as JSON and hope Twitch is sending identical payloads.
         return JSON.stringify(event);
     }
-    
+
     // https://dev.twitch.tv/docs/eventsub/manage-subscriptions/#getting-the-list-of-events-you-subscribe-to
     // Lot of assumptions around wanting at most one handler per type, and disregarding condition.  That's fine for Kiara today.
     // This method might also benefit from synchronization and/or a short debounce.
@@ -743,11 +750,11 @@ class TesManager {
     }
 }
 const tesManager = new TesManager();
-const subCondition = { broadcaster_user_id: process.env.BROADCASTER_ID };
-const subConditionMod = { broadcaster_user_id: process.env.BROADCASTER_ID, moderator_user_id: process.env.BROADCASTER_ID };
-let websockets=[];
+const subCondition = { broadcaster_user_id: broadcasterID };
+const subConditionMod = { broadcaster_user_id: broadcasterID, moderator_user_id: broadcasterID }
+let websockets = [];
 // setup websocket server for chat widget
-const socket = new WebSocket.Server({ port: 8080 });
+const socket = new WebSocketServer({ port: 8080 });
 socket.on('connection', ws => {
     websockets.push(ws);
     console.log('Client connected');
@@ -758,26 +765,26 @@ socket.on('connection', ws => {
 console.log('WebSocket server started on port 8080');
 
 function sendToAllChatWidgets(data) {
-  let serialized = data;
-  try {
-    serialized = JSON.stringify(data);
-  }
-  catch (error) {
-    // If the data can't be serialized, it can't be sent to the websockets.
-    // But let's not explode; just log the issue and return.  Nothing's wrong with the WebSocket connection after all, only the input for this one call.
-    console.error("Failed to serialize chat widget data!", error);
-    return;
-  }
-  for (const connection of websockets) {
+    let serialized = data;
     try {
-      if (connection?.readyState === WebSocket.OPEN) {
-        connection.send(serialized);
-      }
+        serialized = JSON.stringify(data);
     }
     catch (error) {
-      console.error("Sending to chat widget failed!", serialized, error);
+        // If the data can't be serialized, it can't be sent to the websockets.
+        // But let's not explode; just log the issue and return.  Nothing's wrong with the WebSocket connection after all, only the input for this one call.
+        console.error("Failed to serialize chat widget data!", error);
+        return;
     }
-  }
+    for (const connection of websockets) {
+        try {
+            if (connection?.readyState === WebSocket.OPEN) {
+                connection.send(serialized);
+            }
+        }
+        catch (error) {
+            console.error("Sending to chat widget failed!", serialized, error);
+        }
+    }
 }
 
 /***************************************
@@ -854,119 +861,119 @@ function updateStreaksSafely(userId, userName, sayItOutLoud = false) {
     }
 }
 
-    //check the current stream start time
-    //compare against previous value of current stream time
-    //if the same, do nothing (bot was restarted or something)
-    //if 5 hours has passed since end of last stream (try first)
-    //if the same 24 hour period (set to 6 AM PDT converted to GMT so whatever the hell that is)/ , do not change the existing start time
-    //save to json
-function updateStreaks(userID, userName, sayItOutLoud = false){
+//check the current stream start time
+//compare against previous value of current stream time
+//if the same, do nothing (bot was restarted or something)
+//if 5 hours has passed since end of last stream (try first)
+//if the same 24 hour period (set to 6 AM PDT converted to GMT so whatever the hell that is)/ , do not change the existing start time
+//save to json
+function updateStreaks(userID, userName, sayItOutLoud = false) {
     // if the user didn't redeem a channel point reward for it, then there's no need to do all the file manipulation if we've already seen them streak.
     if (!sayItOutLoud && userIdsWhoAlreadyStreaked[userID]) {
         return;
     }
-    
+
     //read the json file
     let streak_List
-    try {streak_List=jsonfile.readFileSync(streak_Path)}
-    catch (e) {}
+    try { streak_List = jsonfile.readFileSync(streak_Path) }
+    catch (e) { }
 
-    if(!streak_List){
+    if (!streak_List) {
         console.log('something got messed up in streaks')
     }
-    else{
+    else {
         const say = msg => {
             if (sayItOutLoud) {
                 client.say(channelName, msg);
             }
         }
-        
-        let lastStart= Date.parse(streak_List.Last_Stream.Start);
-        let lastEnd= Date.parse(streak_List.Last_Stream.End);
-        let currentStart= Date.parse(streak_List.Current_Stream.Start)
-        let now=new Date();
-        let userInfo =streak_List.Users[userID];
+
+        let lastStart = Date.parse(streak_List.Last_Stream.Start);
+        let lastEnd = Date.parse(streak_List.Last_Stream.End);
+        let currentStart = Date.parse(streak_List.Current_Stream.Start)
+        let now = new Date();
+        let userInfo = streak_List.Users[userID];
 
         //did not find user, add them to the database
-        if(!userInfo){
-            streak_List.Users[userID]={User_Name: `${userName}`, Streak: 1, Best_Streak: 1, Last_Updated: ""};
-             streak_List.Users[userID].Last_Updated=now; 
+        if (!userInfo) {
+            streak_List.Users[userID] = { User_Name: `${userName}`, Streak: 1, Best_Streak: 1, Last_Updated: "" };
+            streak_List.Users[userID].Last_Updated = now;
             say(`@${userName} has just started their watch streak!! this is just the beginning!!`);
         }
         //found user, update streak info
-        else{
-        
+        else {
+
             //is there an End time specified form last stream? if not, use the backup calculation based on reset time
-            if(!lastEnd){
+            if (!lastEnd) {
                 //get the last reset point
-                let lastReset=new Date();
-                lastReset=Date.parse(lastReset);
-                lastReset=lastReset-(24*60*60*1000);
-                lastReset=new Date(lastReset);
-                lastReset.setHours(13,0,0);
-                lastReset=Date.parse(lastReset);
+                let lastReset = new Date();
+                lastReset = Date.parse(lastReset);
+                lastReset = lastReset - (24 * 60 * 60 * 1000);
+                lastReset = new Date(lastReset);
+                lastReset.setHours(13, 0, 0);
+                lastReset = Date.parse(lastReset);
 
                 //check if we are passed the last reset
-                if(((lastStart<lastReset) && (currentStart>=lastReset))){
-                    const lastUpdated=Date.parse(userInfo.Last_Updated);
+                if (((lastStart < lastReset) && (currentStart >= lastReset))) {
+                    const lastUpdated = Date.parse(userInfo.Last_Updated);
 
-                     //streak is still alive!
-                    if ((lastUpdated>lastStart && lastUpdated<currentStart)){
-                        userInfo.Streak=userInfo.Streak+1;
-                        if (userInfo.Best_Streak<userInfo.Streak){
-                            userInfo.Best_Streak=userInfo.Streak
+                    //streak is still alive!
+                    if ((lastUpdated > lastStart && lastUpdated < currentStart)) {
+                        userInfo.Streak = userInfo.Streak + 1;
+                        if (userInfo.Best_Streak < userInfo.Streak) {
+                            userInfo.Best_Streak = userInfo.Streak
                         }
-                        userInfo.Last_Updated=now;
+                        userInfo.Last_Updated = now;
                         say(`@${userName} has watched ${userInfo.Streak} streams in a row!!`);
                     }
                     //streak is deadge :(
-                    else if (lastUpdated<lastStart){
-                        userInfo.Last_Updated=now;
-                        userInfo.Streak=1
+                    else if (lastUpdated < lastStart) {
+                        userInfo.Last_Updated = now;
+                        userInfo.Streak = 1
                         say(`@${userName} has just re-started their watch streak!! this is just the beginning you can do it this time!!`);
                     }
-                    else{
+                    else {
                         say(`@${userName} is currently on a ${userInfo.Streak} stream streak!`);
-                        if (userInfo.Best_Streak<userInfo.Streak){
-                            userInfo.Best_Streak=userInfo.Streak
+                        if (userInfo.Best_Streak < userInfo.Streak) {
+                            userInfo.Best_Streak = userInfo.Streak
                         }
                     }
                 }
                 say(`@${userName} is currently on a ${userInfo.Streak} stream streak!`);
-                if (userInfo.Best_Streak<userInfo.Streak){
-                            userInfo.Best_Streak=userInfo.Streak
+                if (userInfo.Best_Streak < userInfo.Streak) {
+                    userInfo.Best_Streak = userInfo.Streak
                 }
             }
             //check if 5 hours since last stream or for the reset time
-            else{
-                if ((currentStart-lastEnd)>5*60*60*1000){
-                    const lastUpdated= Date.parse(userInfo.Last_Updated);
+            else {
+                if ((currentStart - lastEnd) > 5 * 60 * 60 * 1000) {
+                    const lastUpdated = Date.parse(userInfo.Last_Updated);
                     //streak is still alive!
-                    if ((lastUpdated>lastStart && lastUpdated<currentStart)){
-                        userInfo.Streak=userInfo.Streak+1;
-                        userInfo.Last_Updated=now;
+                    if ((lastUpdated > lastStart && lastUpdated < currentStart)) {
+                        userInfo.Streak = userInfo.Streak + 1;
+                        userInfo.Last_Updated = now;
                         say(`@${userName} has watched ${userInfo.Streak} streams in a row!!`);
-                        if (userInfo.Best_Streak<userInfo.Streak){
-                            userInfo.Best_Streak=userInfo.Streak
+                        if (userInfo.Best_Streak < userInfo.Streak) {
+                            userInfo.Best_Streak = userInfo.Streak
                         }
                     }
                     //streak is deadge :(
-                    else if (lastUpdated<lastStart){
-                        userInfo.Last_Updated=now;
-                        userInfo.Streak=1
+                    else if (lastUpdated < lastStart) {
+                        userInfo.Last_Updated = now;
+                        userInfo.Streak = 1
                         say(`@${userName} has just re-started their watch streak!! this is just the beginning you can do it this time!!`);
                     }
-                    else{
+                    else {
                         say(`@${userName} is currently on a ${userInfo.Streak} stream streak!`);
-                        if (userInfo.Best_Streak<userInfo.Streak){
-                            userInfo.Best_Streak=userInfo.Streak
+                        if (userInfo.Best_Streak < userInfo.Streak) {
+                            userInfo.Best_Streak = userInfo.Streak
                         }
                     }
                 }
-                else{
+                else {
                     say(`@${userName} is currently on a ${userInfo.Streak} stream streak!`);
-                    if (userInfo.Best_Streak<userInfo.Streak){
-                            userInfo.Best_Streak=userInfo.Streak
+                    if (userInfo.Best_Streak < userInfo.Streak) {
+                        userInfo.Best_Streak = userInfo.Streak
                     }
                 }
             }
@@ -978,113 +985,113 @@ function updateStreaks(userID, userName, sayItOutLoud = false){
     }
 }
 
-tesManager.queueSubscription('stream.online', subCondition, event =>{
-        console.log("stream online detected");
-        let streak_List
-        try {streak_List=jsonfile.readFileSync(streak_Path)}
-        catch (e) {}
-        //if file is empty then initialize it
-        if (!streak_List){   
-            console.log("No File, Creating New File");               
-            let lastStart=event.started_at;
-            console.log(lastStart)
-            let currentStart=event.started_at;
-            const initializeStreaks={Last_Stream: {Start:`${lastStart}`, End: ''}, Current_Stream: {Start:`${lastStart}`}, Users: {}}
-            jsonfile.writeFileSync(streak_Path, initializeStreaks, { spaces: 2, EOL: "\n" })
-        }
+tesManager.queueSubscription('stream.online', subCondition, event => {
+    console.log("stream online detected");
+    let streak_List
+    try { streak_List = jsonfile.readFileSync(streak_Path) }
+    catch (e) { }
+    //if file is empty then initialize it
+    if (!streak_List) {
+        console.log("No File, Creating New File");
+        let lastStart = event.started_at;
+        console.log(lastStart)
+        let currentStart = event.started_at;
+        const initializeStreaks = { Last_Stream: { Start: `${lastStart}`, End: '' }, Current_Stream: { Start: `${lastStart}` }, Users: {} }
+        jsonfile.writeFileSync(streak_Path, initializeStreaks, { spaces: 2, EOL: "\n" })
+    }
 
-        //if file is not empty, update stream info
-        else {
-            console.log("Updating Current Stream Date");   
-            let currentStart=event.started_at;
+    //if file is not empty, update stream info
+    else {
+        console.log("Updating Current Stream Date");
+        let currentStart = event.started_at;
+        console.log(currentStart);
+        console.log(event.started_at);
+        let lastStart = new Date(streak_List.Last_Stream.Start);
+        lastStart = Date.parse(lastStart);
+        let lastEnd = new Date(streak_List.Last_Stream.End);
+        lastEnd = Date.parse(lastEnd);
+        //update stream times
+        if (!lastEnd) {
+            console.log('End time was null');
+            console.log(lastStart);
+            console.log(lastEnd);
             console.log(currentStart);
-            console.log(event.started_at);
-            let lastStart=new Date(streak_List.Last_Stream.Start);
-            lastStart=Date.parse(lastStart);
-            let lastEnd=new Date(streak_List.Last_Stream.End);
-            lastEnd=Date.parse(lastEnd);
-            //update stream times
-            if(!lastEnd){
-                console.log('End time was null');
-                console.log(lastStart);
-                console.log(lastEnd);
-                console.log(currentStart);
-                streak_List.Last_Stream.Start=streak_List.Current_Stream.Start;
-                streak_List.Current_Stream.Start=currentStart;
-                jsonfile.writeFileSync(streak_Path, streak_List, { spaces: 2, EOL: "\n" })
-            }
-            //the end of stream was not detected last time, reset the end to a blank value
-
-            else if(lastEnd<lastStart){
-                console.log('stream end detection did not work last stream');
-                streak_List.Last_Stream.End=""
-                streak_List.Last_Stream.Start=streak_List.Current_Stream.Start;
-                streak_List.Current_Stream.Start=currentStart;
-                jsonfile.writeFileSync(streak_Path, streak_List, { spaces: 2, EOL: "\n" })
-            }
-            //all is good, do standard procedure
-            else if((currentStart-lastEnd)<7200){
-                console.log('Stream Started shortly after last stream, do not update times')
-            }
-            else{
-                console.log('all is good on stream online check')
-                streak_List.Last_Stream.Start=streak_List.Current_Stream.Start;
-                streak_List.Current_Stream.Start=currentStart;
-                jsonfile.writeFileSync(streak_Path, streak_List, { spaces: 2, EOL: "\n" })
-            }
-                console.log(lastStart);
-                console.log(lastEnd);
-                console.log(currentStart);
-            }
-        });
-
-tesManager.queueSubscription('stream.offline', subCondition, event =>{
-        let streak_List
-        try {streak_List=jsonfile.readFileSync(streak_Path)}
-        catch (e) {}
-            //update stream times
-            const now= new Date();
-            streak_List.Last_Stream.Start=streak_List.Current_Stream.Start;
-            streak_List.Last_Stream.End=now;
+            streak_List.Last_Stream.Start = streak_List.Current_Stream.Start;
+            streak_List.Current_Stream.Start = currentStart;
             jsonfile.writeFileSync(streak_Path, streak_List, { spaces: 2, EOL: "\n" })
-            console.log('Stream Ended, logged to streaks')
+        }
+        //the end of stream was not detected last time, reset the end to a blank value
+
+        else if (lastEnd < lastStart) {
+            console.log('stream end detection did not work last stream');
+            streak_List.Last_Stream.End = ""
+            streak_List.Last_Stream.Start = streak_List.Current_Stream.Start;
+            streak_List.Current_Stream.Start = currentStart;
+            jsonfile.writeFileSync(streak_Path, streak_List, { spaces: 2, EOL: "\n" })
+        }
+        //all is good, do standard procedure
+        else if ((currentStart - lastEnd) < 7200) {
+            console.log('Stream Started shortly after last stream, do not update times')
+        }
+        else {
+            console.log('all is good on stream online check')
+            streak_List.Last_Stream.Start = streak_List.Current_Stream.Start;
+            streak_List.Current_Stream.Start = currentStart;
+            jsonfile.writeFileSync(streak_Path, streak_List, { spaces: 2, EOL: "\n" })
+        }
+        console.log(lastStart);
+        console.log(lastEnd);
+        console.log(currentStart);
+    }
 });
 
-let streamInfo=setTimeout(() => getStreamInfo(broadcasterID, 'all', '1'),2000);
+tesManager.queueSubscription('stream.offline', subCondition, event => {
+    let streak_List
+    try { streak_List = jsonfile.readFileSync(streak_Path) }
+    catch (e) { }
+    //update stream times
+    const now = new Date();
+    streak_List.Last_Stream.Start = streak_List.Current_Stream.Start;
+    streak_List.Last_Stream.End = now;
+    jsonfile.writeFileSync(streak_Path, streak_List, { spaces: 2, EOL: "\n" })
+    console.log('Stream Ended, logged to streaks')
+});
+
+let streamInfo = setTimeout(() => getStreamInfo(broadcasterID, 'all', '1'), 2000);
 
 function getStreamInfo(broadcaster_id, type, first) {
     return new Promise((resolve, reject) => {
         console.log('Updating Stream Start Time')
-        apiGetRequest('streams', { user_id: broadcaster_id, type: type, first: first})
+        apiGetRequest('streams', { user_id: broadcaster_id, type: type, first: first })
             .then(data => {
                 resolve(data.data);
                 let streak_List
-                try {streak_List=jsonfile.readFileSync(streak_Path)}
-                catch (e) {}
+                try { streak_List = jsonfile.readFileSync(streak_Path) }
+                catch (e) { }
                 //if file is empty then initialize it
-                if (!streak_List){
-                   console.log('Streak File Not Detected, writing new file')
-                    let lastStart=data.data[0].started_at;
-                    let currentStart=data.data[0].started_at;
-                    const initializeStreaks={Last_Stream: {Start:`${lastStart}`, End: ''}, Current_Stream: {Start:`${lastStart}`}, Users: {}};
+                if (!streak_List) {
+                    console.log('Streak File Not Detected, writing new file')
+                    let lastStart = data.data[0].started_at;
+                    let currentStart = data.data[0].started_at;
+                    const initializeStreaks = { Last_Stream: { Start: `${lastStart}`, End: '' }, Current_Stream: { Start: `${lastStart}` }, Users: {} };
                     jsonfile.writeFileSync(streak_Path, initializeStreaks, { spaces: 2, EOL: "\n" });
                 }
 
                 //if file is not empty, update stream info
                 else {
-                    let currentStart=data.data[0].started_at;
-                    if (streak_List.Last_Stream.End==="") {
+                    let currentStart = data.data[0].started_at;
+                    if (streak_List.Last_Stream.End === "") {
                         //update stream times
-                        streak_List.Last_Stream.Start=streak_List.Current_Stream.Start;
-                        streak_List.Current_Stream.Start=currentStart;
-                        jsonfile.writeFileSync(streak_Path,streak_List, { spaces: 2, EOL: "\n" });
+                        streak_List.Last_Stream.Start = streak_List.Current_Stream.Start;
+                        streak_List.Current_Stream.Start = currentStart;
+                        jsonfile.writeFileSync(streak_Path, streak_List, { spaces: 2, EOL: "\n" });
                     }
-                        else if ((Date.parse(currentStart)-Date.parse(streak_List.Last_Stream.End))<(5*60*60*1000)){
-                            console.log('stream time Updated to' + currentStart)
-                        streak_List.Current_Stream.Start=currentStart;
-                        jsonfile.writeFileSync(streak_Path,streak_List, { spaces: 2, EOL: "\n" });
+                    else if ((Date.parse(currentStart) - Date.parse(streak_List.Last_Stream.End)) < (5 * 60 * 60 * 1000)) {
+                        console.log('stream time Updated to' + currentStart)
+                        streak_List.Current_Stream.Start = currentStart;
+                        jsonfile.writeFileSync(streak_Path, streak_List, { spaces: 2, EOL: "\n" });
                     }
-                    
+
                 }
             })
 
@@ -1109,11 +1116,11 @@ tesManager.queueSubscription("channel.subscribe", subCondition, event => {
 /***************************************
  *        Mod Action                   *
  ***************************************/
-tesManager.queueSubscription("channel.chat.message_delete", { ...subCondition, user_id: process.env.BROADCASTER_ID }, messageDelete => {
+tesManager.queueSubscription("channel.chat.message_delete", { ...subCondition, user_id: broadcasterID }, messageDelete => {
     sendToAllChatWidgets({ kiawaAction: "Message_Delete", messageDelete });
 });
 
-tesManager.queueSubscription("channel.moderate", { ...subCondition, moderator_user_id: process.env.BROADCASTER_ID }, modAction => {
+tesManager.queueSubscription("channel.moderate", { ...subCondition, moderator_user_id: broadcasterID }, modAction => {
     sendToAllChatWidgets({ kiawaAction: "Mod_Action", modAction });
 });
 
@@ -1171,56 +1178,56 @@ tesManager.queueSubscription("channel.subscription.message", subCondition, event
 /***************************************
  *         D D D D DUEL!!!!!!          *
  ***************************************/
-let Duelers=[];
-setInterval(()=>{
-    if(Duelers.length>1){
-        let dueler1=Duelers[0];
-        let dueler2=Duelers[1];
+let Duelers = [];
+setInterval(() => {
+    if (Duelers.length > 1) {
+        let dueler1 = Duelers[0];
+        let dueler2 = Duelers[1];
         client.say(channelName, `Attention Chat! @${dueler1.dueler} is about to duel @${dueler2.dueler}!!`);
         setTimeout(() => { client.say(channelName, `will ${dueler2.dueler}'s ${dueler2.weapon} be enough to defeat ${dueler1.dueler}'s ${dueler1.weapon}? Duelists take your places!`) }, 1000);
         setTimeout(() => { client.say(channelName, `Fire in 3!`) }, 3000);
         setTimeout(() => { client.say(channelName, `2!`) }, 4000);
         setTimeout(() => { client.say(channelName, `1!`) }, 5000);
         //blow up somebody
-        setTimeout(() => { 
+        setTimeout(() => {
             //coin flip for the winnter
-            const coinFlip=Math.random();
+            const coinFlip = Math.random();
             //player 1 wins
-                if (coinFlip>=0.5){
-                    client.say(channelName, `@${dueler1.dueler} obliterated @${dueler2.dueler} with amazing use of their ${dueler1.weapon}`);
-                    serverBoop(`${dueler2.duelerID}`, 60*5, `Killed by ${dueler1.dueler}'s ${dueler1.weapon}`)
-                }
-                
+            if (coinFlip >= 0.5) {
+                client.say(channelName, `@${dueler1.dueler} obliterated @${dueler2.dueler} with amazing use of their ${dueler1.weapon}`);
+                serverBoop(`${dueler2.duelerID}`, 60 * 5, `Killed by ${dueler1.dueler}'s ${dueler1.weapon}`)
+            }
+
             //player 2 wins
-                else{
-                    client.say(channelName, `@${dueler2.dueler} obliterated @${dueler1.dueler} with amazing use of their ${dueler2.weapon}`);
-                    serverBoop(`${dueler1.duelerID}`, 60*5, `Killed by ${dueler2.dueler}'s ${dueler2.weapon}`)
-                };
-        //cleanup and remove contestants from array
-        Duelers=Duelers.slice(2);
+            else {
+                client.say(channelName, `@${dueler2.dueler} obliterated @${dueler1.dueler} with amazing use of their ${dueler2.weapon}`);
+                serverBoop(`${dueler1.duelerID}`, 60 * 5, `Killed by ${dueler2.dueler}'s ${dueler2.weapon}`)
+            };
+            //cleanup and remove contestants from array
+            Duelers = Duelers.slice(2);
         }
-        , 6000);
+            , 6000);
     }
-},15*1000)
+}, 15 * 1000)
 
 
 //connect to twitch chat
 const client = new tmi.Client({
     options: { debug: true },
     identity: {
-        username: 'Kiawa_Bot',
+        username: botName,
 
         //put this into environment variables later
-        password: process.env.OAUTH
+        password: process.env.IRC_OAUTH
     },
-    channels: ['Kiara_TV']
+    channels: [channelName]
 });
 
 function updateIncentiveFile() {
 
     const content = incentiveData.read('incentive.command') + ' $' + Number(incentiveData.read('incentive.amount')).toFixed(2) + ' / $' + incentiveData.read('incentive.goal');
     //const content = Number(incentiveData.read('incentive.amount')).toFixed(0) + '/' + incentiveData.read('incentive.goal');
-    fs.writeFile('//KIARASTREAM/d/incentive.txt', content, err => {
+    fs.writeFile(INCENTIVEPATH, content, err => {
         if (err) {
             console.error(err);
         } else {
@@ -1230,43 +1237,43 @@ function updateIncentiveFile() {
 }
 
 //this function will search the command list file and if it finds a command, will send the response to chat
-function postCommand(command){
-        jsonfile.readFile(command_Path, async function(err, command_List) {
-            if (err) {
-                console.error(err);
-            }
+function postCommand(command) {
+    jsonfile.readFile(command_Path, async function(err, command_List) {
+        if (err) {
+            console.error(err);
+        }
 
-            //Search the existing command file and see if the command exists
-            var command_Info = command_List.find(
-                (search) => {
-                    return search.Tag === command;
-                }        
-            );
-            //format all the bullshit and spit it out in the chat
-            try {
-                var command_Output = command_Info.Response
-                client.say(channelName, command_Output);
+        //Search the existing command file and see if the command exists
+        var command_Info = command_List.find(
+            (search) => {
+                return search.Tag === command;
             }
-            catch (error) {
-                console.error(err);
-            }
-        });
+        );
+        //format all the bullshit and spit it out in the chat
+        try {
+            var command_Output = command_Info.Response
+            client.say(channelName, command_Output);
+        }
+        catch (error) {
+            console.error(err);
+        }
+    });
 }
 //these two variables track activity and which timed command we are currently at.
-let activityDetection=false
-let commandIndex=0
+let activityDetection = false
+let commandIndex = 0
 
 //interval for timed chat commands that run automagically if chat activity has been recorded since last run
-setInterval(()=>{
-if (activityDetection===true){    
+setInterval(() => {
+    if (activityDetection === true) {
         //send the current command in the rotation to get posted
         (timedCommands[commandIndex]);
         //increment the array index, reset to 0 if past max
-        commandIndex=(commandIndex+1) % timedCommands.length;
+        commandIndex = (commandIndex + 1) % timedCommands.length;
         //resert activity detection so that timed messages do not get spammed without chat activity
-        activityDetection=false;
+        activityDetection = false;
     }
-},1200000)
+}, 1200000)
 // post first entry in array to postCommand
 //increment to next array index, if at max loop back to start
 
@@ -1277,11 +1284,11 @@ client.connect();
 
 client.on('message', async (channel, tags, message, self) => {
     //determine if chat activity in last 10 minutes
-    if (tags.username != "kiawa_bot"){
-        activityDetection=true;
+    if (tags.username != "kiawa_bot") {
+        activityDetection = true;
         updateStreaksSafely(tags["user-id"], tags.username);
     }
-    
+
     // resolve badges for this message
     const messageBadges = [];
     if (tags.badges) {
@@ -1293,7 +1300,7 @@ client.on('message', async (channel, tags, message, self) => {
             }
         }
     }
-    
+
     //send to websocket
     sendToAllChatWidgets({ kiawaAction: "Message", channel, tags, message, messageBadges });
 
@@ -1362,7 +1369,7 @@ client.on('message', async (channel, tags, message, self) => {
     }
     //split the message to pull out the command from the first word
     //creates an array of space delimited entries
-    const args =  message.split(/\s+/);
+    const args = message.split(/\s+/);
 
     //take the first entry and convert to lowercase, this is to check for addquote or quote command
     var command = args[0].toLowerCase();
@@ -1382,7 +1389,7 @@ client.on('message', async (channel, tags, message, self) => {
     if (command === '!addcommand') {
 
         //check if user is in the allow_List (AKA, is a MOD or approved person)
-        if (allow_List.includes(tags.username) || tags.mod===true) {
+        if (allow_List.includes(tags.username) || tags.mod === true) {
 
 
             //Grab the Current Command total
@@ -1437,7 +1444,7 @@ client.on('message', async (channel, tags, message, self) => {
     if (command === '!editcommand') {
 
         //check if user is in the allow_List (AKA, is a MOD or approved person)
-        if (allow_List.includes(tags.username) || tags.mod===true) {
+        if (allow_List.includes(tags.username) || tags.mod === true) {
 
             //check and make sure a command field was added
             try {
@@ -1500,7 +1507,7 @@ client.on('message', async (channel, tags, message, self) => {
     //check if it is an add quote command
     if (command === '!addquote') {
         //check if user is a mod or VIP allow_List.includes(tags.username) || 
-        if (allow_List.includes(tags.username) || tags.mod===true || tags.vip===true) {
+        if (allow_List.includes(tags.username) || tags.mod === true || tags.vip === true) {
 
 
             //the remainder of the text is separated from the command, this is the quote text
@@ -1526,7 +1533,8 @@ client.on('message', async (channel, tags, message, self) => {
                 const quote_Requestor = tags.username;
 
                 //Grab the category info code
-                const broadcast_info = await getChannelInfo(37055465);
+                //37055465
+                const broadcast_info = await getChannelInfo(broadcasterID);
                 //const broadcast_info= await axios.get('https://api.twitch.tv/helix/channels?broadcaster_id=37055465', axiosConfig);
                 const category = broadcast_info[0].game_name;
 
@@ -1590,7 +1598,7 @@ client.on('message', async (channel, tags, message, self) => {
             try {
                 var quote_ID = args.slice(1).join(' ');
                 //console.log(args)
-               // var  quote_ID= args[1]
+                // var  quote_ID= args[1]
             }
 
             //I don't know how errors work so this just stops it from clogging the window
@@ -1630,7 +1638,7 @@ client.on('message', async (channel, tags, message, self) => {
     //update incentive goal and bot command id
     if (command === '!updateincentive') {
         //check if user is in the allow_List (AKA, is a MOD or approved person)
-        if (allow_List.includes(tags.username) || tags.mod===true) {
+        if (allow_List.includes(tags.username) || tags.mod === true) {
             //Grab the Current incentive goal
             incentiveGoal = incentiveData.read('incentive.goal');
             incentiveGoal = incentiveData.read('incentive.goal');
@@ -1662,33 +1670,33 @@ client.on('message', async (channel, tags, message, self) => {
     //bot easks each of them to select a weapon (it can be anything that they type)
     //determine a winner via coinflip, loser gets blasted for x amount of time
     //score added for number of duels won
-  if (command === '!duel') {
-    let dueler=`${tags.username}`;
-    let duelerID=`${tags["user-id"]}`;
-    let weapon= (args.slice(1).join(' ')??"").trim();
-    console.log(weapon)
-    if (!weapon){
-        weapon='fists';
-    }
+    if (command === '!duel') {
+        let dueler = `${tags.username}`;
+        let duelerID = `${tags["user-id"]}`;
+        let weapon = (args.slice(1).join(' ') ?? "").trim();
+        console.log(weapon)
+        if (!weapon) {
+            weapon = 'fists';
+        }
 
-    if (Duelers.length>0 && Duelers[Duelers.length-1].dueler===dueler){
+        if (Duelers.length > 0 && Duelers[Duelers.length - 1].dueler === dueler) {
             client.say(channel, `@${tags.username} is trying to duel themself and that's kind of sad...`)
-    }
-    else{
-        Duelers.push({dueler,weapon,duelerID})
-    
-        if (Duelers.length % 2 == 0){
+        }
+        else {
+            Duelers.push({ dueler, weapon, duelerID })
 
-            client.say(channel, `@${tags.username} has accepted ${Duelers[Duelers.length-2].dueler}'s duel and will be fighting with their ${weapon}` )
-        }
-        else{ 
-            client.say(channel, `@${tags.username} wants to duel with their ${weapon}!! Type '!duel' to fight them!` ); 
+            if (Duelers.length % 2 == 0) {
+
+                client.say(channel, `@${tags.username} has accepted ${Duelers[Duelers.length - 2].dueler}'s duel and will be fighting with their ${weapon}`)
+            }
+            else {
+                client.say(channel, `@${tags.username} wants to duel with their ${weapon}!! Type '!duel' to fight them!`);
+            }
         }
     }
-  }
     if (command === '!addincentive') {
         //check if user is in the allow_List (AKA, is a MOD or approved person)
-        if (allow_List.includes(tags.username) || tags.mod===true) {
+        if (allow_List.includes(tags.username) || tags.mod === true) {
             //Grab the Current incentive goal
             incentiveAmount = incentiveData.read('incentive.amount');
             incentiveGoal = incentiveData.read('incentive.goal');
@@ -1715,7 +1723,7 @@ client.on('message', async (channel, tags, message, self) => {
     //Code to handle editing of existing quotes
     if (command === '!editquote') {
         //check if user is in the allow_List (AKA, is a MOD or approved person)
-        if (allow_List.includes(tags.username) || tags.mod===true || tags.vip===true) {
+        if (allow_List.includes(tags.username) || tags.mod === true || tags.vip === true) {
             //Grab the Current Quote total
             jsonfile.readFile(quote_Path, function(err, quote_List) {
                 if (err) console.error(err)
