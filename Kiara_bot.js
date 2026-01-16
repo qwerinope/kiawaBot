@@ -444,17 +444,17 @@ validateAccessToken();
 validationTicker = setInterval(() => { validateAccessToken(); }, 1000 * 600);
 incentiveData.statusCallback = handleIncentiveFileStatusChange;
 incentiveData.loadData();
-if (!fs.existsSync(INCENTIVEPATH)) {
-    const content = incentiveData.read('incentive.command') + ' $' + Number(incentiveData.read('incentive.amount')).toFixed(2) + ' / $' + incentiveData.read('incentive.goal');
-    //const content = Number(incentiveData.read('incentive.amount')).toFixed(0) + '/' + incentiveData.read('incentive.goal');
-    fs.writeFile(INCENTIVEPATH, content, err => {
-        if (err) {
-            console.error(err);
-        } else {
-            // file written successfully
-        }
-    });
-}
+// if (!fs.existsSync(INCENTIVEPATH)) {
+//     const content = incentiveData.read('incentive.command') + ' $' + Number(incentiveData.read('incentive.amount')).toFixed(2) + ' / $' + incentiveData.read('incentive.goal');
+//     //const content = Number(incentiveData.read('incentive.amount')).toFixed(0) + '/' + incentiveData.read('incentive.goal');
+//     fs.writeFile(INCENTIVEPATH, content, err => {
+//         if (err) {
+//             console.error(err);
+//         } else {
+//             // file written successfully
+//         }
+//     });
+// }
 
 //LISTENING SECTION
 
