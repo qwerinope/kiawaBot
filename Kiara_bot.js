@@ -15,7 +15,6 @@ import querystring from "qs"
 import { spawn } from "child_process"
 //Include line reading module
 import fs from "fs"
-//const { getFileCache } = require("./FileCacheService");
 
 // Ensure data directory exists
 const dataDir = './data';
@@ -57,7 +56,6 @@ const clientId = process.env.CLIENT_ID;
 const clientSecret = process.env.CLIENT_SECRET;
 const botID = process.env.BOT_ID;
 const botName = process.env.BOT_NAME;
-const INCENTIVEPATH = process.env.INCENTIVE_PATH;
 var incentiveAmount;
 var incentiveGoal;
 const timedCommands = ['discord', 'kofi', 'socials2', 'socials1', 'links', 'patreon', 'youtube', 'archives'];
@@ -385,14 +383,14 @@ function serverBoop(user_id, duration, reason) {
             .then(data => resolve(data.data))
             .catch(error => {
                 console.log("Error when doin' a boop");
-                setTimeout(() => { client.say('#' + channelName, 'kiawaBONK kiawaBONK') }, 3000);
-                setTimeout(() => { client.say('#' + channelName, 'kiawaWat') }, 6000);
-                setTimeout(() => { client.say('#' + channelName, 'kiawaPuff') }, 8000);
-                setTimeout(() => { client.say('#' + channelName, 'kiawaBONK kiawaBONK kiawaBONK') }, 11000);
-                setTimeout(() => { client.say('#' + channelName, 'kiawaDed') }, 13000);
+                setTimeout(() => { client.say(channelName, 'kiawaBONK kiawaBONK') }, 3000);
+                setTimeout(() => { client.say(channelName, 'kiawaWat') }, 6000);
+                setTimeout(() => { client.say(channelName, 'kiawaPuff') }, 8000);
+                setTimeout(() => { client.say(channelName, 'kiawaBONK kiawaBONK kiawaBONK') }, 11000);
+                setTimeout(() => { client.say(channelName, 'kiawaDed') }, 13000);
 
             });
-        client.say('#' + channelName, 'kiawaBONK');
+        client.say(channelName, 'kiawaBONK');
     });
 }
 
@@ -444,17 +442,6 @@ validateAccessToken();
 validationTicker = setInterval(() => { validateAccessToken(); }, 1000 * 600);
 incentiveData.statusCallback = handleIncentiveFileStatusChange;
 incentiveData.loadData();
-// if (!fs.existsSync(INCENTIVEPATH)) {
-//     const content = incentiveData.read('incentive.command') + ' $' + Number(incentiveData.read('incentive.amount')).toFixed(2) + ' / $' + incentiveData.read('incentive.goal');
-//     //const content = Number(incentiveData.read('incentive.amount')).toFixed(0) + '/' + incentiveData.read('incentive.goal');
-//     fs.writeFile(INCENTIVEPATH, content, err => {
-//         if (err) {
-//             console.error(err);
-//         } else {
-//             // file written successfully
-//         }
-//     });
-// }
 
 //LISTENING SECTION
 
@@ -1222,19 +1209,6 @@ const client = new tmi.Client({
     },
     channels: [channelName]
 });
-
-// function updateIncentiveFile() {
-
-//     const content = incentiveData.read('incentive.command') + ' $' + Number(incentiveData.read('incentive.amount')).toFixed(2) + ' / $' + incentiveData.read('incentive.goal');
-//     //const content = Number(incentiveData.read('incentive.amount')).toFixed(0) + '/' + incentiveData.read('incentive.goal');
-//     fs.writeFile(INCENTIVEPATH, content, err => {
-//         if (err) {
-//             console.error(err);
-//         } else {
-//             // file written successfully
-//         }
-//     });
-// }
 
 //this function will search the command list file and if it finds a command, will send the response to chat
 function postCommand(command) {
