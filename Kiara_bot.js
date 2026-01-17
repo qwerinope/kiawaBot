@@ -817,7 +817,7 @@ tesManager.queueSubscription("channel.cheer", subCondition, event => {
         setTimeout(() => { serverBoop(`22587336`, 1800, 'TNT') }, 5000);
     }
     incentiveData.update('incentive.amount', incentiveAmount);
-    updateIncentiveFile();
+    //updateIncentiveFile();
     if (!event?.is_anonymous) { // anonymous cheers, well, don't come with user info
         updateStreaksSafely(event?.user_id, event?.user_name);
     }
@@ -1143,7 +1143,7 @@ tesManager.queueSubscription("channel.subscription.gift", subCondition, event =>
     }
     console.log(incentiveAmount);
     incentiveData.update('incentive.amount', incentiveAmount);
-    updateIncentiveFile();
+    //updateIncentiveFile();
     if (!event?.is_anonymous) { // anonymous gift subs, well, don't come with user info
         updateStreaksSafely(event?.user_id, event?.user_name);
     }
@@ -1171,7 +1171,7 @@ tesManager.queueSubscription("channel.subscription.message", subCondition, event
     }
     console.log(incentiveAmount);
     incentiveData.update('incentive.amount', incentiveAmount);
-    updateIncentiveFile();
+    //updateIncentiveFile();
     updateStreaksSafely(event?.user_id, event?.user_name);
 });
 
@@ -1223,18 +1223,18 @@ const client = new tmi.Client({
     channels: [channelName]
 });
 
-function updateIncentiveFile() {
+// function updateIncentiveFile() {
 
-    const content = incentiveData.read('incentive.command') + ' $' + Number(incentiveData.read('incentive.amount')).toFixed(2) + ' / $' + incentiveData.read('incentive.goal');
-    //const content = Number(incentiveData.read('incentive.amount')).toFixed(0) + '/' + incentiveData.read('incentive.goal');
-    fs.writeFile(INCENTIVEPATH, content, err => {
-        if (err) {
-            console.error(err);
-        } else {
-            // file written successfully
-        }
-    });
-}
+//     const content = incentiveData.read('incentive.command') + ' $' + Number(incentiveData.read('incentive.amount')).toFixed(2) + ' / $' + incentiveData.read('incentive.goal');
+//     //const content = Number(incentiveData.read('incentive.amount')).toFixed(0) + '/' + incentiveData.read('incentive.goal');
+//     fs.writeFile(INCENTIVEPATH, content, err => {
+//         if (err) {
+//             console.error(err);
+//         } else {
+//             // file written successfully
+//         }
+//     });
+// }
 
 //this function will search the command list file and if it finds a command, will send the response to chat
 function postCommand(command) {
@@ -1661,7 +1661,7 @@ client.on('message', async (channel, tags, message, self) => {
                 console.log('Incentive Goal Updated from $' + incentiveGoal + ' to $' + new_Goal)
                 client.say(channel, 'Incentive Goal Updated from $' + incentiveGoal + ' to $' + new_Goal);
             }
-            updateIncentiveFile();
+            //updateIncentiveFile();
         }
     }
 
@@ -1717,7 +1717,7 @@ client.on('message', async (channel, tags, message, self) => {
                 console.log('Incentive Amount Updated from $' + incentiveData.read('incentive.amount').toFixed(2) + ' to $' + new_Amount.toFixed(2))
                 client.say(channel, 'Incentive Amount Updated from $' + incentiveAmount.toFixed(2) + ' to $' + new_Amount.toFixed(2));
             }
-            updateIncentiveFile();
+            //updateIncentiveFile();
         }
     }
     //Code to handle editing of existing quotes
